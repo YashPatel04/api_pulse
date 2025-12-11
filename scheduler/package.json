@@ -1,0 +1,15 @@
+{
+  "name": "api-pulse-scheduler",
+  "version": "1.0.0",
+  "description": "Scheduler for API Pulse - executes scheduled API tasks",
+  "main": "scheduler.js",
+  "scripts": {
+    "start": "node scheduler.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

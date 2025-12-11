@@ -1,0 +1,26 @@
+{
+  "name": "api-pulse",
+  "version": "1.0.0",
+  "description": "API Pulse - Schedule automated HTTP requests to your API endpoints",
+  "private": true,
+  "scripts": {
+    "frontend:install": "cd frontend && npm install",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "scheduler:install": "cd scheduler && npm install",
+    "setup": "npm install && npm run frontend:install && npm run scheduler:install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/api-pulse.git"
+  },
+  "keywords": [
+    "api",
+    "scheduling",
+    "monitoring",
+    "http",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -15,7 +15,8 @@ export default function CreateTask() {
     task_name: '',
     api_url: '',
     method: 'GET',
-    schedule_interval: '5',
+    schedule_value: '5',
+    schedule_unit: 'm', // m, h, d
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +39,9 @@ export default function CreateTask() {
         return;
       }
 
+      // Convert schedule_value and schedule_unit to schedule_interval format
+      const schedule_interval = `${formData.schedule_value}${formData.schedule_unit}`;
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-task`,
         {
@@ -46,7 +50,12 @@ export default function CreateTask() {
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            task_name: formData.task_name,
+            api_url: formData.api_url,
+            method: formData.method,
+            schedule_interval,
+          }),
         }
       );
 
@@ -125,18 +134,33 @@ export default function CreateTask() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Schedule Interval (minutes)
+                Schedule Interval
               </label>
-              <input
-                type="number"
-                name="schedule_interval"
-                value={formData.schedule_interval}
-                onChange={handleChange}
-                required
-                min="5"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="5"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="schedule_value"
+                  value={formData.schedule_value}
+                  onChange={handleChange}
+                  required
+                  min="1"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="5"
+                />
+                <select
+                  name="schedule_unit"
+                  value={formData.schedule_unit}
+                  onChange={handleChange}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="m">Minutes</option>
+                  <option value="h">Hours</option>
+                  <option value="d">Days</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                e.g., 5 minutes, 1 hour, 1 day
+              </p>
             </div>
 
             {error && (

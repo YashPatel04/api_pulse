@@ -26,8 +26,32 @@ export default function Dashboard() {
       }
 
       setUser(session.user);
-      setTasks([]);
-      setLoading(false);
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/list-tasks`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setTasks(data || []);
+        } else {
+          console.error('Failed to fetch tasks');
+          setTasks([]);
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkAuthAndFetchTasks();
@@ -87,8 +111,50 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow">
-            <p className="p-4 text-gray-600">Your tasks will appear here</p>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Task Name</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">API URL</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Method</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Schedule</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {tasks.map((task: any) => (
+                  <tr key={task.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900">{task.task_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-xs">{task.api_url}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                        {task.method}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{task.schedule_interval}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        task.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {task.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <Link
+                        href={`/dashboard/task/${task.id}/logs`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        View Logs
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </main>

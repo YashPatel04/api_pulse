@@ -14,6 +14,8 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -60,6 +62,84 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    setDeletingTaskId(taskId);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-task/${taskId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Remove the deleted task from the list
+        setTasks(tasks.filter((task: any) => task.id !== taskId));
+      } else {
+        alert('Failed to delete task');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('An error occurred while deleting the task');
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
+
+  const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
+    setTogglingTaskId(taskId);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/toggle-task/${taskId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ is_active: !currentStatus }),
+        }
+      );
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        // Update the task in the list
+        setTasks(tasks.map((task: any) => 
+          task.id === taskId ? updatedTask : task
+        ));
+      } else {
+        alert('Failed to update task status');
+      }
+    } catch (error) {
+      console.error('Error toggling task:', error);
+      alert('An error occurred while updating the task');
+    } finally {
+      setTogglingTaskId(null);
+    }
   };
 
   if (loading) {
@@ -135,21 +215,32 @@ export default function Dashboard() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{task.schedule_interval}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        task.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {task.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                      <button
+                        onClick={() => handleToggleTask(task.id, task.is_active)}
+                        disabled={togglingTaskId === task.id}
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium transition-colors ${
+                          task.is_active
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200 disabled:bg-gray-100'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:bg-gray-100'
+                        }`}
+                      >
+                        {togglingTaskId === task.id ? 'Updating...' : (task.is_active ? '▶ Running' : '⏸ Paused')}
+                      </button>
                     </td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-6 py-4 text-sm space-x-2">
                       <Link
                         href={`/dashboard/task/${task.id}/logs`}
                         className="text-indigo-600 hover:text-indigo-900"
                       >
                         View Logs
                       </Link>
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        disabled={deletingTaskId === task.id}
+                        className="text-red-600 hover:text-red-900 disabled:text-gray-400"
+                      >
+                        {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
+                      </button>
                     </td>
                   </tr>
                 ))}

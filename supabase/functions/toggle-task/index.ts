@@ -17,6 +17,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Create admin client (service role bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get("Authorization")!;
@@ -43,26 +44,67 @@ serve(async (req) => {
       });
     }
 
-    // Get logs for the task
-    const { data: logs, error } = await supabase
-      .from("api_task_logs")
-      .select("*")
-      .eq("task_id", taskId)
-      .eq("user_id", user.id)
-      .order("executed_at", { ascending: false });
+    const { is_active } = await req.json();
+
+    if (typeof is_active !== "boolean") {
+      return new Response(JSON.stringify({ error: "is_active must be a boolean" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // First, verify the task belongs to the user
+    const { data: task, error: fetchError } = await supabase
+      .from("api_tasks")
+      .select("id, user_id")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchError || !task) {
+      console.error("Task fetch error:", fetchError);
+      return new Response(JSON.stringify({ error: "Task not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (task.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Update the task status (service role key bypasses RLS)
+    const { data, error } = await supabase
+      .from("api_tasks")
+      .update({ is_active, updated_at: new Date().toISOString() })
+      .eq("id", taskId)
+      .select();
 
     if (error) {
+      console.error("Update error:", error);
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify(logs), {
+    if (!data || data.length === 0) {
+      console.error(`Task not found for ID: ${taskId}`);
+      return new Response(JSON.stringify({ error: "Task not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`Successfully updated task ${taskId} to is_active=${is_active}`);
+    return new Response(JSON.stringify(data[0]), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error("Error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",

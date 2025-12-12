@@ -51,14 +51,14 @@ export default function Settings() {
     setUser(session.user);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/list-integrations`,
+    const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-integrations`,
         {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+ },
         }
       );
 
@@ -68,13 +68,13 @@ export default function Settings() {
       } else {
         console.error('Failed to fetch integrations');
         setIntegrations([]);
-      }
+   }
     } catch (error) {
       console.error('Error fetching integrations:', error);
-      setIntegrations([]);
+  setIntegrations([]);
     } finally {
       setLoading(false);
-    }
+}
   };
 
   const handleAddIntegration = async (e: React.FormEvent) => {
@@ -98,80 +98,57 @@ export default function Settings() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-integration`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-integrations`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
+ headers: {
+ Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
         }
-      );
+   );
 
       if (response.ok) {
         const newIntegration = await response.json();
         setIntegrations([...integrations, newIntegration]);
         setShowModal(false);
-        setFormData({ name: '', email: '', slackWebhook: '', smsNumber: '' });
+  setFormData({ name: '', email: '', slackWebhook: '', smsNumber: '' });
+        alert('Integration added successfully! Check your Slack for a test message.');
       } else {
-        alert('Failed to create integration');
+        const error = await response.json();
+        alert(`Failed to create integration: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating integration:', error);
-      alert('An error occurred while creating the integration');
+   alert('An error occurred while creating the integration');
     }
   };
 
   const handleTestIntegration = async (integrationId: string) => {
-    setTestingId(integrationId);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/test-integration/${integrationId}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        alert('Integration test successful!');
-      } else {
-        alert('Integration test failed. Please check your credentials.');
-      }
-    } catch (error) {
-      console.error('Error testing integration:', error);
-      alert('An error occurred while testing the integration');
-    } finally {
-      setTestingId(null);
-    }
+    // Note: Slack integrations are automatically tested when created
+    // This function can be used for other integration types in the future
+    alert('Slack integrations are automatically tested when you add them. Check your channel for the test message!');
   };
 
   const handleDeleteIntegration = async (integrationId: string) => {
     if (!confirm('Are you sure you want to delete this integration?')) return;
 
-    setDeletingId(integrationId);
+  setDeletingId(integrationId);
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-integration/${integrationId}`,
-        {
-          method: 'DELETE',
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-integrations/${integrationId}`,
+     {
+ method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
+   Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
           },
-        }
+     }
       );
 
       if (response.ok) {
@@ -181,8 +158,8 @@ export default function Settings() {
       }
     } catch (error) {
       console.error('Error deleting integration:', error);
-      alert('An error occurred while deleting the integration');
-    } finally {
+    alert('An error occurred while deleting the integration');
+  } finally {
       setDeletingId(null);
     }
   };

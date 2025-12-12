@@ -1,4 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
+const NotificationService = require("./notificationService");
 require("dotenv").config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -10,6 +11,7 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+const notificationService = new NotificationService(supabaseUrl, supabaseKey);
 
 async function executeScheduledTasks() {
   try {
@@ -51,6 +53,7 @@ async function executeScheduledTasks() {
 
 async function executeTask(task) {
   const startTime = Date.now();
+  let logData = null;
 
   try {
     console.log(`\n[${new Date().toISOString()}] Executing task: ${task.task_name} (${task.id})`);
@@ -77,19 +80,20 @@ async function executeTask(task) {
     // Extract response headers
     const responseHeaders = Object.fromEntries(response.headers.entries());
 
+    // Prepare log data
+    logData = {
+      task_id: task.id,
+      user_id: task.user_id,
+      status_code: response.status,
+      response_headers: responseHeaders,
+      response_body: responseBody,
+      response_time_ms: responseTime,
+      error_message: null,
+      executed_at: new Date().toISOString(),
+    };
+
     // Save the log
-    const { error: logError } = await supabase.from("api_task_logs").insert([
-      {
-        task_id: task.id,
-        user_id: task.user_id,
-        status_code: response.status,
-        response_headers: responseHeaders,
-        response_body: responseBody,
-        response_time_ms: responseTime,
-        error_message: null,
-        executed_at: new Date().toISOString(),
-      },
-    ]);
+    const { error: logError } = await supabase.from("api_task_logs").insert([logData]);
 
     if (logError) {
       console.error(`Error saving log for task ${task.id}:`, logError);
@@ -98,6 +102,9 @@ async function executeTask(task) {
         `✓ Task executed: ${task.task_name} - Status: ${response.status} - Time: ${responseTime}ms`
       );
     }
+
+    // Send notifications
+    await notificationService.sendTaskNotifications(task, logData);
 
     // Calculate next run time
     const nextRunAt = calculateNextRunTime(new Date(), task.schedule_interval);
@@ -121,23 +128,27 @@ async function executeTask(task) {
 
     console.error(`✗ Task failed: ${task.task_name} - ${errorMessage}`);
 
+    // Prepare error log data
+    logData = {
+      task_id: task.id,
+      user_id: task.user_id,
+      status_code: null,
+      response_headers: null,
+      response_body: null,
+      response_time_ms: responseTime,
+      error_message: errorMessage,
+      executed_at: new Date().toISOString(),
+    };
+
     // Save error log
-    const { error: logError } = await supabase.from("api_task_logs").insert([
-      {
-        task_id: task.id,
-        user_id: task.user_id,
-        status_code: null,
-        response_headers: null,
-        response_body: null,
-        response_time_ms: responseTime,
-        error_message: errorMessage,
-        executed_at: new Date().toISOString(),
-      },
-    ]);
+    const { error: logError } = await supabase.from("api_task_logs").insert([logData]);
 
     if (logError) {
       console.error(`Error saving error log for task ${task.id}:`, logError);
     }
+
+    // Send notifications for failed task
+    await notificationService.sendTaskNotifications(task, logData);
 
     // Update task with last_run_at
     const nextRunAt = calculateNextRunTime(new Date(), task.schedule_interval);

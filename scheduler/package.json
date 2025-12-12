@@ -4,7 +4,8 @@
   "description": "Scheduler for API Pulse - executes scheduled API tasks",
   "main": "scheduler.js",
   "scripts": {
-    "start": "node scheduler.js"
+    "start": "node scheduler.js",
+    "test": "node test-notifications.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",

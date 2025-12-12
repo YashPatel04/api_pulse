@@ -1,4 +1,4 @@
-name: API_Pulse Scheduler
+name: API Pulse Scheduler
 
 on:
   schedule:

@@ -94,7 +94,7 @@ API_Pulse/
 
 ### Supported Channels
 - ✅ **Slack** - Free webhooks with rich formatting
-- 🚧 **Email** - Coming soon (Resend integration)
+- ✅ **Email** - 🆕 Resend integration (100 emails/day free)
 - 🚧 **SMS** - Coming soon (Twilio integration)
 - ✅ **Custom Webhooks** - Send to any endpoint
 

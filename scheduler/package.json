@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "resend": "^3.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,4 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
+const { Resend } = require("resend");
+const { generateSuccessEmail, generateFailureEmail } = require("./emailTemplates");
 
 /**
  * Notification Service
@@ -8,6 +10,12 @@ const { createClient } = require("@supabase/supabase-js");
 class NotificationService {
   constructor(supabaseUrl, supabaseKey) {
     this.supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Initialize Resend for email notifications
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+      this.fromEmail = process.env.FROM_EMAIL || 'notifications@apipulse.dev';
+    }
   }
 
   /**
@@ -240,9 +248,50 @@ type: "mrkdwn",
    * Send Email notification
    */
   async sendEmailNotification(integration, task, log) {
-    // TODO: Implement email sending using Resend or another provider
-    console.log(`Email notification would be sent to: ${integration.credentials.email}`);
-    console.log(`Task: ${task.task_name}, Status: ${log.status_code}`);
+    if (!this.resend) {
+      console.error("Resend not configured. Set RESEND_API_KEY in .env");
+      return;
+    }
+
+    const toEmail = integration.credentials.email;
+
+    if (!toEmail) {
+      console.error("Email address not found in integration credentials");
+      return;
+    }
+
+    try {
+      const isSuccess = log.status_code && log.status_code >= 200 && log.status_code < 400;
+      const subject = isSuccess 
+  ? `? API Task Success: ${task.task_name}`
+     : `? API Task Failed: ${task.task_name}`;
+
+  // Generate HTML email based on success/failure
+const htmlContent = isSuccess
+        ? generateSuccessEmail(task, log)
+        : generateFailureEmail(task, log);
+
+   // Include response body if requested
+  if (this.includeResponse && log.response_body) {
+  // Response body is already included in the HTML templates
+      }
+
+      const { data, error } = await this.resend.emails.send({
+     from: this.fromEmail,
+ to: toEmail,
+  subject: subject,
+ html: htmlContent,
+      });
+
+      if (error) {
+        throw new Error(`Resend API error: ${JSON.stringify(error)}`);
+      }
+
+      console.log(`? Email notification sent for task: ${task.task_name} (ID: ${data.id})`);
+    } catch (error) {
+      console.error(`Error sending email notification:`, error);
+  throw error;
+    }
   }
 
   /**

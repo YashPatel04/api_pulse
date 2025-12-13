@@ -98,11 +98,25 @@ status: 400,
         return new Response(
       JSON.stringify({ error: "Email address is required" }),
     {
-            status: 400,
+   status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
   }
+
+      // Validate email format
+      if (integration_type === "email") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(credentials.email)) {
+   return new Response(
+            JSON.stringify({ error: "Invalid email address format" }),
+     {
+       status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+     }
+          );
+   }
+ }
 
       // Test the integration before saving (for Slack)
       if (integration_type === "slack") {
